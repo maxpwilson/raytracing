@@ -1,0 +1,1 @@
+//! Texture containing an image

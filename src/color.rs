@@ -6,19 +6,21 @@ use std::ops;
 use crate::vec3::Vec3;
 use crate::interval::Interval;
 
-#[derive(Debug, PartialEq)]
+/// Defines r,g,b color object
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Color {
-    pub r: f64, 
+    pub r: f64,
     pub g: f64,
-    pub b: f64
+    pub b: f64,
 }
 
 impl Color {
     pub fn new(r: f64, g: f64, b: f64) -> Self {
-        Color{ r: r, g: g, b: b }
+        Color { r: r, g: g, b: b }
     }
 }
 
+/// Translate linear color value to gamma corrected value
 fn linear_to_gamma(linear_component: f64) -> f64 {
     if linear_component > 0.0 {
         return linear_component.sqrt();
@@ -26,17 +28,17 @@ fn linear_to_gamma(linear_component: f64) -> f64 {
     0.0
 }
 
+/// Write color value to specified output stream
 pub fn write_color(mut out: impl Write, pixel_color: Color) -> Result<()> {
     let r = linear_to_gamma(pixel_color.r);
     let g = linear_to_gamma(pixel_color.g);
     let b = linear_to_gamma(pixel_color.b);
 
-
     // Translate [0, 1] components to [0, 255]
     let intensity = Interval::new(0.0, 0.999);
-    let rbyte = (256.0 * intensity.clamp(r)) as usize;
-    let gbyte = (256.0 * intensity.clamp(g)) as usize;
-    let bbyte = (256.0 * intensity.clamp(b)) as usize;
+    let rbyte = (256.0 * intensity.itv_clamp(r)) as usize;
+    let gbyte = (256.0 * intensity.itv_clamp(g)) as usize;
+    let bbyte = (256.0 * intensity.itv_clamp(b)) as usize;
     writeln!(out, "{rbyte} {gbyte} {bbyte}")?;
     Ok(())
 }
@@ -56,6 +58,12 @@ impl ops::AddAssign<Color> for Color {
     }
 }
 
+impl ops::Mul<Color> for Color {
+    type Output = Color;
+    fn mul(self, rhs: Color) -> Color {
+        Color::new(rhs.r * self.r, rhs.g * self.g, rhs.b * self.b)
+    }
+}
 impl From<Vec3> for Color {
     fn from(v: Vec3) -> Color {
         Color::new(v.x, v.y, v.z)
