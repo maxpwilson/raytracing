@@ -11,13 +11,100 @@ use raytracing::material::dialectric::Dialectric;
 use raytracing::random_float;
 use std::time::Instant;
 use raytracing::hittable::bvh::BvhNode;
-use raytracing::texture::{ SolidColor, checkered::Checkered };
+use raytracing::texture::{
+    SolidColor,
+    checkered::CheckeredTexture,
+    image::ImageTexture,
+    noise::NoiseTexture,
+};
 use std::rc::Rc;
+use anyhow::Result;
 
-fn main() {
+use raytracing::image::Image;
+
+fn main() -> Result<()> {
     let start = Instant::now();
-    checkered_spheres();
+    //checkered_spheres();
+    perlin_spheres()?;
     eprintln!("Took {} Seconds", start.elapsed().as_secs());
+    Ok(())
+}
+
+fn perlin_spheres() -> Result<()> {
+    let pertext = Rc::new(NoiseTexture::new());
+    let mut world = HittableList::new();
+    world.add(
+        Sphere::new_static(
+            Point3::new(0.0, -1000.0, 0.0),
+            1000.0,
+            Lambertian::new(pertext.clone())
+        )
+    );
+    world.add(
+        Sphere::new_static(
+            Point3::new(0.0, 2.0, 0.0),
+            2.0,
+            Lambertian::new(pertext)
+        )
+    );
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width = 400;
+    let samples_per_pixel = 100;
+    let max_depth = 50;
+    let vfov = 20.0;
+    let lookfrom = Point3::new(13.0, 2.0, 3.0);
+    let lookat = Point3::new(0.0, 0.0, 0.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let defocus_angle = 0.0;
+    let focus_dist = 1.0;
+
+    let camera = CameraArgs::new(
+        aspect_ratio,
+        image_width,
+        samples_per_pixel,
+        max_depth,
+        vfov,
+        lookfrom,
+        lookat,
+        vup,
+        defocus_angle,
+        focus_dist
+    ).initialize();
+    camera.render(world);
+    Ok(())
+}
+
+fn earth_texture() -> Result<()> {
+    let earth_image = Image::from_file("earthmap.jpg")?;
+    let earth_texture = ImageTexture::new(earth_image);
+    let earth_surface = Lambertian::new(Rc::new(earth_texture));
+    let globe = Sphere::new_static(Point3::zero(), 2.0, earth_surface);
+
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width = 400;
+    let samples_per_pixel = 100;
+    let max_depth = 50;
+    let vfov = 20.0;
+    let lookfrom = Point3::new(0.0, 0.0, 12.0);
+    let lookat = Point3::new(0.0, 0.0, 0.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let defocus_angle = 0.0;
+    let focus_dist = 1.0;
+
+    let camera = CameraArgs::new(
+        aspect_ratio,
+        image_width,
+        samples_per_pixel,
+        max_depth,
+        vfov,
+        lookfrom,
+        lookat,
+        vup,
+        defocus_angle,
+        focus_dist
+    ).initialize();
+    camera.render(globe);
+    Ok(())
 }
 
 fn checkered_spheres() {
@@ -46,7 +133,11 @@ fn checkered_spheres() {
     ).initialize();
     // World
     let mut world = HittableList::new();
-    let checker = Checkered::from_solids(3.2, Color::new(0.2, 0.3, 0.1), Color::new(0.9, 0.9, 0.9));
+    let checker = CheckeredTexture::from_solids(
+        3.2,
+        Color::new(0.2, 0.3, 0.1),
+        Color::new(0.9, 0.9, 0.9)
+    );
     world.add(
         Sphere::new_static(
             Point3::new(0.0, 10.0, 0.0),
@@ -87,7 +178,7 @@ fn bouncing_sphers() {
     ).initialize();
     // World
     let mut world = HittableList::new();
-    let checker = Checkered::from_solids(
+    let checker = CheckeredTexture::from_solids(
         0.32,
         Color::new(0.2, 0.3, 0.1),
         Color::new(0.9, 0.9, 0.9)

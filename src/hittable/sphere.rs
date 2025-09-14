@@ -63,7 +63,7 @@ impl<T: Material> Hittable for Sphere<T> {
         let oc = current_center - r.origin;
         let a = r.direction.length_squared();
         let h = r.direction.dot(&oc);
-        let c = oc.dot(&oc) - self.radius * self.radius;
+        let c = oc.length_squared() - self.radius * self.radius;
         let discriminant = h * h - a * c;
         if discriminant < 0.0 {
             return None;

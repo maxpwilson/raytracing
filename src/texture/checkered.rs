@@ -6,21 +6,21 @@ use crate::vec3::Point3;
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub struct Checkered {
+pub struct CheckeredTexture {
     inv_scale: f64,
     even_texture: Rc<dyn Texture>,
     odd_texture: Rc<dyn Texture>,
 }
-impl Checkered {
+impl CheckeredTexture {
     pub fn new(
         inv_scale: f64,
         even_texture: Rc<dyn Texture>,
         odd_texture: Rc<dyn Texture>
     ) -> Self {
-        Checkered { inv_scale, even_texture, odd_texture }
+        CheckeredTexture { inv_scale, even_texture, odd_texture }
     }
     pub fn from_solids(inv_scale: f64, even_color: Color, odd_color: Color) -> Self {
-        Checkered::new(
+        CheckeredTexture::new(
             inv_scale,
             Rc::new(SolidColor::new(even_color)),
             Rc::new(SolidColor::new(odd_color))
@@ -28,8 +28,8 @@ impl Checkered {
     }
 }
 
-impl Texture for Checkered {
-    fn color(&self, u: f64, v: f64, p: Point3) -> &Color {
+impl Texture for CheckeredTexture {
+    fn color(&self, u: f64, v: f64, p: Point3) -> Color {
         let x = (self.inv_scale * p.x).floor() as i32;
         let y = (self.inv_scale * p.y).floor() as i32;
         let z = (self.inv_scale * p.z).floor() as i32;

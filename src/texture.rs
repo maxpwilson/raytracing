@@ -5,9 +5,10 @@ use crate::color::Color;
 
 pub mod checkered;
 pub mod image;
+pub mod noise;
 
 pub trait Texture {
-    fn color(&self, u: f64, v: f64, p: Point3) -> &Color;
+    fn color(&self, u: f64, v: f64, p: Point3) -> Color;
 }
 
 pub struct SolidColor {
@@ -20,7 +21,7 @@ impl SolidColor {
 }
 
 impl Texture for SolidColor {
-    fn color(&self, _u: f64, _v: f64, _p: Point3) -> &Color {
-        &self.albedo
+    fn color(&self, _u: f64, _v: f64, _p: Point3) -> Color {
+        self.albedo
     }
 }
