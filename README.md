@@ -1,3 +1,3 @@
 # Rust Raytracer
 ## Examples
-![Marbled Sphere](assets/marbled_noise.ppm "Marbled Noise")
+![Marbled Sphere](examples/marbled_noise.png "Marbled Noise")
