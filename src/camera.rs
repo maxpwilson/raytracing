@@ -13,6 +13,7 @@ pub struct CameraArgs {
     pub image_width: i32, // Rendered image width in pixel count
     pub samples_per_pixel: i32, // Count of random samples for each pixel
     pub max_depth: i32, // Maximum number of ray bounces
+    pub background: Color, // Background color
     pub vfov: f64, // Vertical view angle
     pub lookfrom: Point3, // Point camera is looking from
     pub lookat: Point3, // Point camera is looking at
@@ -26,6 +27,7 @@ impl CameraArgs {
         image_width: i32,
         samples_per_pixel: i32,
         max_depth: i32,
+        background: Color,
         vfov: f64,
         lookfrom: Point3,
         lookat: Point3,
@@ -38,6 +40,7 @@ impl CameraArgs {
             image_width,
             samples_per_pixel,
             max_depth,
+            background,
             vfov,
             lookfrom,
             lookat,
@@ -152,7 +155,7 @@ impl Camera {
                 let mut pixel_color = Color::new(0.0, 0.0, 0.0);
                 for _sample in 0..self.args.samples_per_pixel {
                     let r = self.get_ray(i, j);
-                    pixel_color += ray_color(&r, self.args.max_depth, &world);
+                    pixel_color += self.ray_color(&r, self.args.max_depth, &world);
                 }
                 write_color(&mut out, self.pixel_samples_scale * pixel_color).unwrap();
             }
@@ -180,32 +183,34 @@ impl Camera {
         let p = Vec3::random_in_unit_disk();
         self.center + p.x * self.defocus_disk_u + p.y * self.defocus_disk_v
     }
+
+    fn ray_color(&self, r: &Ray, depth: i32, world: &impl Hittable) -> Color {
+        // exits after max depth exceeded
+        if depth <= 0 {
+            return Color::new(0.0, 0.0, 0.0);
+        }
+        if let Some(rec) = world.hit(r, Interval::new(0.001, f64::INFINITY)) {
+            let color_from_emission = rec.material.emit(rec.u, rec.v, rec.p);
+            match rec.material.scatter(r, &rec) {
+                Some((scattered, attenuation)) => {
+                    // if hit return color from scattering + color from emission
+                    let color_from_scatter =
+                        attenuation * self.ray_color(&scattered, depth - 1, world);
+                    return color_from_scatter + color_from_emission;
+                }
+                None => {
+                    // if nothing is hit return emitted color
+                    return color_from_emission;
+                }
+            }
+        }
+
+        // defines background if nothing hit
+        self.args.background
+    }
 }
 
 /// Create vector on the unit square centered on 0
 fn sample_square() -> Vec3 {
     Vec3::new(random_float(-0.5, 0.5), random_float(-0.5, 0.5), 0.0)
-}
-
-fn ray_color(r: &Ray, depth: i32, world: &impl Hittable) -> Color {
-    // exits after max depth exceeded
-    if depth <= 0 {
-        return Color::new(0.0, 0.0, 0.0);
-    }
-
-    if let Some(rec) = world.hit(r, Interval::new(0.001, f64::INFINITY)) {
-        match rec.material.scatter(r, &rec) {
-            Some((scattered, attenuation)) => {
-                return attenuation * ray_color(&scattered, depth - 1, world);
-            }
-            None => {
-                return Color::new(0.0, 0.0, 0.0);
-            }
-        }
-    }
-
-    // defines background if nothing hit
-    let unit_direction = r.direction.unit_vector();
-    let a = 0.5 * (unit_direction.y + 1.0);
-    (1.0 - a) * Color::new(1.0, 1.0, 1.0) + a * Color::new(0.5, 0.7, 1.0)
 }

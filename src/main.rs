@@ -11,58 +11,280 @@ use raytracing::material::dialectric::Dialectric;
 use raytracing::random_float;
 use std::time::Instant;
 use raytracing::hittable::bvh::BvhNode;
+use raytracing::hittable::quad::Quad;
 use raytracing::texture::{
     SolidColor,
     checkered::CheckeredTexture,
     image::ImageTexture,
     noise::NoiseTexture,
 };
-use std::rc::Rc;
+use raytracing::material::diffuse_light::DiffuseLight;
 use anyhow::Result;
+use raytracing::hittable::cube::Cube;
 
 use raytracing::image::Image;
 
 fn main() -> Result<()> {
     let start = Instant::now();
     //checkered_spheres();
-    perlin_spheres()?;
+    cornell_box()?;
     eprintln!("Took {} Seconds", start.elapsed().as_secs());
     Ok(())
 }
 
-fn perlin_spheres() -> Result<()> {
-    let pertext = Rc::new(NoiseTexture::new());
+fn cornell_box() -> Result<()> {
     let mut world = HittableList::new();
+    let red = Lambertian::new(SolidColor::new(Color::new(0.65, 0.05, 0.05)));
+    let white = Lambertian::new(SolidColor::new(Color::new(0.73, 0.73, 0.73)));
+    let green = Lambertian::new(SolidColor::new(Color::new(0.12, 0.45, 0.15)));
+    let light = DiffuseLight::new(SolidColor::new(Color::new(15.0, 15.0, 15.0)));
+
     world.add(
-        Sphere::new_static(
-            Point3::new(0.0, -1000.0, 0.0),
-            1000.0,
-            Lambertian::new(pertext.clone())
+        Quad::new_static(
+            Point3::new(555.0, 0.0, 0.0),
+            Vec3::new(0.0, 555.0, 0.0),
+            Vec3::new(0.0, 0.0, 555.0),
+            green
+        )
+    );
+
+    world.add(
+        Quad::new_static(
+            Point3::new(0.0, 0.0, 0.0),
+            Vec3::new(0.0, 555.0, 0.0),
+            Vec3::new(0.0, 0.0, 555.0),
+            red
         )
     );
     world.add(
-        Sphere::new_static(
-            Point3::new(0.0, 2.0, 0.0),
-            2.0,
-            Lambertian::new(pertext)
+        Quad::new_static(
+            Point3::new(343.0, 554.0, 332.0),
+            Vec3::new(-130.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, -105.0),
+            light
         )
     );
-    let aspect_ratio = 16.0 / 9.0;
-    let image_width = 400;
-    let samples_per_pixel = 100;
+    world.add(
+        Quad::new_static(
+            Point3::new(0.0, 0.0, 0.0),
+            Vec3::new(555.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, 555.0),
+            white.clone()
+        )
+    );
+    world.add(
+        Quad::new_static(
+            Point3::new(555.0, 555.0, 555.0),
+            Vec3::new(-555.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, -555.0),
+            white.clone()
+        )
+    );
+    world.add(
+        Quad::new_static(
+            Point3::new(0.0, 0.0, 555.0),
+            Vec3::new(555.0, 0.0, 0.0),
+            Vec3::new(0.0, 555.0, 0.0),
+            white.clone()
+        )
+    );
+
+    world.add(
+        Cube::from_points(
+            Point3::new(130.0, 0.0, 65.0),
+            Point3::new(295.0, 165.0, 230.0),
+            white.clone()
+        )
+    );
+    world.add(
+        Cube::from_points(
+            Point3::new(265.0, 0.0, 295.0),
+            Point3::new(430.0, 330.0, 460.0),
+            white.clone()
+        )
+    );
+
+    let aspect_ratio = 1.0;
+    let image_width = 600;
+    let samples_per_pixel = 200;
     let max_depth = 50;
-    let vfov = 20.0;
-    let lookfrom = Point3::new(13.0, 2.0, 3.0);
-    let lookat = Point3::new(0.0, 0.0, 0.0);
+    let background = Color::new(0.0, 0.0, 0.0);
+    let vfov = 40.0;
+    let lookfrom = Point3::new(278.0, 278.0, -800.0);
+    let lookat = Point3::new(278.0, 278.0, 0.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let defocus_angle = 0.0;
-    let focus_dist = 1.0;
+    let focus_dist = 10.0;
 
     let camera = CameraArgs::new(
         aspect_ratio,
         image_width,
         samples_per_pixel,
         max_depth,
+        background,
+        vfov,
+        lookfrom,
+        lookat,
+        vup,
+        defocus_angle,
+        focus_dist
+    ).initialize();
+    camera.render(world);
+    Ok(())
+}
+
+fn simple_light() -> Result<()> {
+    let mut world = HittableList::new();
+    let pertext = NoiseTexture::new(4.0);
+    world.add(
+        Sphere::new_static(Point3::new(0.0, -1000.0, 0.0), 1000.0, Lambertian::new(pertext.clone()))
+    );
+    world.add(
+        Sphere::new_static(Point3::new(0.0, 2.0, 0.0), 2.0, Lambertian::new(pertext.clone()))
+    );
+    let difflight = DiffuseLight::new(SolidColor::new(Color::new(4.0, 4.0, 4.0)));
+    world.add(
+        Quad::new_static(
+            Point3::new(3.0, 1.0, -2.0),
+            Vec3::new(2.0, 0.0, 0.0),
+            Vec3::new(0.0, 2.0, 0.0),
+            difflight.clone()
+        )
+    );
+    world.add(Sphere::new_static(Point3::new(0.0, 7.0, 0.0), 2.0, difflight));
+
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width = 400;
+    let samples_per_pixel = 100;
+    let max_depth = 50;
+    let background = Color::new(0.0, 0.0, 0.0);
+    let vfov = 20.0;
+    let lookfrom = Point3::new(26.0, 3.0, 6.0);
+    let lookat = Point3::new(0.0, 2.0, 0.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let defocus_angle = 0.0;
+    let focus_dist = 10.0;
+
+    let camera = CameraArgs::new(
+        aspect_ratio,
+        image_width,
+        samples_per_pixel,
+        max_depth,
+        background,
+        vfov,
+        lookfrom,
+        lookat,
+        vup,
+        defocus_angle,
+        focus_dist
+    ).initialize();
+    camera.render(world);
+    Ok(())
+}
+
+fn quads() -> Result<()> {
+    let mut world = HittableList::new();
+    let left_red = Lambertian::new(SolidColor::new(Color::new(1.0, 0.2, 0.2)));
+    let back_green = Lambertian::new(SolidColor::new(Color::new(0.2, 1.0, 0.2)));
+    let right_blue = Lambertian::new(SolidColor::new(Color::new(0.2, 0.2, 1.0)));
+    let upper_orange = Lambertian::new(SolidColor::new(Color::new(1.0, 0.5, 0.0)));
+    let lower_teal = Lambertian::new(SolidColor::new(Color::new(0.2, 0.8, 0.8)));
+
+    world.add(
+        Quad::new_static(
+            Point3::new(-3.0, -2.0, 5.0),
+            Vec3::new(0.0, 0.0, -4.0),
+            Vec3::new(0.0, 4.0, 0.0),
+            left_red
+        )
+    );
+    world.add(
+        Quad::new_static(
+            Point3::new(-2.0, -2.0, 0.0),
+            Vec3::new(4.0, 0.0, 0.0),
+            Vec3::new(0.0, 4.0, 0.0),
+            back_green
+        )
+    );
+    world.add(
+        Quad::new_static(
+            Point3::new(3.0, -2.0, 1.0),
+            Vec3::new(0.0, 0.0, 4.0),
+            Vec3::new(0.0, 4.0, 0.0),
+            right_blue
+        )
+    );
+    world.add(
+        Quad::new_static(
+            Point3::new(-2.0, 3.0, 1.0),
+            Vec3::new(4.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, 4.0),
+            upper_orange
+        )
+    );
+    world.add(
+        Quad::new_static(
+            Point3::new(-2.0, -3.0, 5.0),
+            Vec3::new(4.0, 0.0, 0.0),
+            Vec3::new(0.0, 0.0, -4.0),
+            lower_teal
+        )
+    );
+
+    let aspect_ratio = 1.0;
+    let image_width = 400;
+    let samples_per_pixel = 100;
+    let max_depth = 50;
+    let background = Color::new(0.7, 0.8, 1.0);
+    let vfov = 80.0;
+    let lookfrom = Point3::new(0.0, 0.0, 9.0);
+    let lookat = Point3::new(0.0, 0.0, 0.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let defocus_angle = 0.0;
+    let focus_dist = 10.0;
+
+    let camera = CameraArgs::new(
+        aspect_ratio,
+        image_width,
+        samples_per_pixel,
+        max_depth,
+        background,
+        vfov,
+        lookfrom,
+        lookat,
+        vup,
+        defocus_angle,
+        focus_dist
+    ).initialize();
+    camera.render(world);
+    Ok(())
+}
+
+fn perlin_spheres() -> Result<()> {
+    let pertext = NoiseTexture::new(4.0);
+    let mut world = HittableList::new();
+    world.add(
+        Sphere::new_static(Point3::new(0.0, -1000.0, 0.0), 1000.0, Lambertian::new(pertext.clone()))
+    );
+    world.add(Sphere::new_static(Point3::new(0.0, 2.0, 0.0), 2.0, Lambertian::new(pertext)));
+    let aspect_ratio = 16.0 / 9.0;
+    let image_width = 400;
+    let samples_per_pixel = 100;
+    let max_depth = 50;
+    let background = Color::new(0.7, 0.8, 1.0);
+    let vfov = 20.0;
+    let lookfrom = Point3::new(13.0, 2.0, 3.0);
+    let lookat = Point3::new(0.0, 0.0, 0.0);
+    let vup = Vec3::new(0.0, 1.0, 0.0);
+    let defocus_angle = 0.0;
+    let focus_dist = 10.0;
+
+    let camera = CameraArgs::new(
+        aspect_ratio,
+        image_width,
+        samples_per_pixel,
+        max_depth,
+        background,
         vfov,
         lookfrom,
         lookat,
@@ -77,25 +299,27 @@ fn perlin_spheres() -> Result<()> {
 fn earth_texture() -> Result<()> {
     let earth_image = Image::from_file("earthmap.jpg")?;
     let earth_texture = ImageTexture::new(earth_image);
-    let earth_surface = Lambertian::new(Rc::new(earth_texture));
+    let earth_surface = Lambertian::new(earth_texture);
     let globe = Sphere::new_static(Point3::zero(), 2.0, earth_surface);
 
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 400;
     let samples_per_pixel = 100;
     let max_depth = 50;
+    let background = Color::new(0.7, 0.8, 1.0);
     let vfov = 20.0;
     let lookfrom = Point3::new(0.0, 0.0, 12.0);
     let lookat = Point3::new(0.0, 0.0, 0.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let defocus_angle = 0.0;
-    let focus_dist = 1.0;
+    let focus_dist = 10.0;
 
     let camera = CameraArgs::new(
         aspect_ratio,
         image_width,
         samples_per_pixel,
         max_depth,
+        background,
         vfov,
         lookfrom,
         lookat,
@@ -112,18 +336,20 @@ fn checkered_spheres() {
     let image_width = 400;
     let samples_per_pixel = 100;
     let max_depth = 50;
+    let background = Color::new(0.7, 0.8, 1.0);
     let vfov = 20.0;
     let lookfrom = Point3::new(13.0, 2.0, 3.0);
     let lookat = Point3::new(0.0, 0.0, 0.0);
     let vup = Vec3::new(0.0, 1.0, 0.0);
     let defocus_angle = 0.0;
-    let focus_dist = 1.0;
+    let focus_dist = 10.0;
 
     let camera = CameraArgs::new(
         aspect_ratio,
         image_width,
         samples_per_pixel,
         max_depth,
+        background,
         vfov,
         lookfrom,
         lookat,
@@ -139,15 +365,9 @@ fn checkered_spheres() {
         Color::new(0.9, 0.9, 0.9)
     );
     world.add(
-        Sphere::new_static(
-            Point3::new(0.0, 10.0, 0.0),
-            10.0,
-            Lambertian::new(Rc::new(checker.clone()))
-        )
+        Sphere::new_static(Point3::new(0.0, 10.0, 0.0), 10.0, Lambertian::new(checker.clone()))
     );
-    world.add(
-        Sphere::new_static(Point3::new(0.0, -10.0, 0.0), 10.0, Lambertian::new(Rc::new(checker)))
-    );
+    world.add(Sphere::new_static(Point3::new(0.0, -10.0, 0.0), 10.0, Lambertian::new(checker)));
     let bvh = BvhNode::from_list(&mut world.objects);
     camera.render(bvh);
 }
@@ -157,6 +377,7 @@ fn bouncing_sphers() {
     let image_width = 400;
     let samples_per_pixel = 100;
     let max_depth = 50;
+    let background = Color::new(0.7, 0.8, 1.0);
     let vfov = 20.0;
     let lookfrom = Point3::new(13.0, 2.0, 3.0);
     let lookat = Point3::new(0.0, 0.0, 0.0);
@@ -169,6 +390,7 @@ fn bouncing_sphers() {
         image_width,
         samples_per_pixel,
         max_depth,
+        background,
         vfov,
         lookfrom,
         lookat,
@@ -183,7 +405,7 @@ fn bouncing_sphers() {
         Color::new(0.2, 0.3, 0.1),
         Color::new(0.9, 0.9, 0.9)
     );
-    let ground_material = Lambertian::new(Rc::new(checker));
+    let ground_material = Lambertian::new(checker);
     world.add(Sphere::new_static(Point3::new(0.0, -1000.0, 0.0), 1000.0, ground_material));
     for a in -11..11 {
         for b in -11..11 {
@@ -207,7 +429,7 @@ fn bouncing_sphers() {
                             random_float(0.0, 1.0),
                             random_float(0.0, 1.0)
                         );
-                    let sphere_material = Lambertian::new(Rc::new(SolidColor::new(albedo)));
+                    let sphere_material = Lambertian::new(SolidColor::new(albedo));
                     let center2 = center + Vec3::new(0.0, random_float(0.0, 0.5), 0.0);
                     world.add(Sphere::new_moving(center, center2, 0.2, sphere_material));
                 } else if choose_mat < 0.95 {
@@ -230,7 +452,7 @@ fn bouncing_sphers() {
     }
 
     let material1 = Dialectric::new(1.5);
-    let material2 = Lambertian::new(Rc::new(SolidColor::new(Color::new(0.4, 0.2, 0.1))));
+    let material2 = Lambertian::new(SolidColor::new(Color::new(0.4, 0.2, 0.1)));
     let material3 = Metal::new(Color::new(0.7, 0.6, 0.5), 0.0);
 
     world.add(Sphere::new_static(Point3::new(0.0, 1.0, 0.0), 1.0, material1));

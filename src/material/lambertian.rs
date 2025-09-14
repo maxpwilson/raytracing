@@ -4,14 +4,13 @@ use crate::material::{ Material, HitRecord, Ray, Color };
 use crate::texture::Texture;
 use crate::vec3::Vec3;
 
-use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Lambertian<T: Texture> {
-    texture: Rc<T>,
+    texture: T,
 }
 impl<T: Texture> Lambertian<T> {
-    pub fn new(texture: Rc<T>) -> Self {
+    pub fn new(texture: T) -> Self {
         Lambertian { texture }
     }
 }

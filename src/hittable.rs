@@ -10,6 +10,8 @@ use crate::aabb::Aabb;
 pub mod hittable_list;
 pub mod sphere;
 pub mod bvh;
+pub mod quad;
+pub mod cube;
 
 /// Parameters of the hit. Material is borrowed from object hit. The material must live at least as long as the
 /// HitRecord does -> 'a

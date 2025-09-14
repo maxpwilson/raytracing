@@ -11,6 +11,7 @@ pub trait Texture {
     fn color(&self, u: f64, v: f64, p: Point3) -> Color;
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct SolidColor {
     albedo: Color,
 }

@@ -14,6 +14,20 @@ pub struct Aabb {
 
 impl Aabb {
     pub fn new(x: Interval, y: Interval, z: Interval) -> Self {
+        // Add minimum padding
+        let delta = 0.0001; // minimum size
+        let x = match x.size() > delta {
+            true => x,
+            false => x.expand(delta)
+        };
+        let y = match y.size() > delta {
+            true => y,
+            false => y.expand(delta)
+        };
+        let z = match z.size() > delta {
+            true => z,
+            false => z.expand(delta)
+        };
         Aabb { x, y, z }
     }
     /// Empty box
